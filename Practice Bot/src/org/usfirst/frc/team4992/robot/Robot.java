@@ -22,46 +22,46 @@ import edu.wpi.first.wpilibj.Timer;
 
 
 public class Robot extends IterativeRobot {
+	
+    private final static double turnSpeed = 0.2;
+    private final static double driveSpeed = 0.8;
+
+    private final static int ac_gyro = 0;
+    private final static int ac_ranger = 3;
+    private final static int c_rFront =3;
+    private final static int c_lFront = 4;
+    private final static int c_rBack = 2;
+    private final static int c_lBack = 1;
+
+    
+    
+    final String defaultAuto = "Default";
+    final String customAuto = "My Auto";
+	
 	//Construct speed controllers
-	TalonSRX rightFront=new TalonSRX(3);
-	Jaguar rightBack   = new Jaguar(2);
-	TalonSRX leftFront = new TalonSRX(4);
-	Jaguar leftBack    = new Jaguar(1);
+	TalonSRX rightFront=new TalonSRX(c_rFront);
+	Jaguar rightBack   = new Jaguar(c_rBack);
+	TalonSRX leftFront = new TalonSRX(c_lFront);
+	Jaguar leftBack    = new Jaguar(c_rFront);
 	
 	RobotDrive bot = new RobotDrive (leftFront,leftBack,rightFront,rightBack);	
 
-	private AnalogGyro gyro;
+	AnalogGyro gyro;
+	Ultrasonic ranger; 
 	
-	//Define Joystick Variables
-	private Joystick controller;
-	private JoystickButton AButton;
-	private JoystickButton BButton;
-	double stickX;
-	double stickY;
-	double leftTrigger;
-	double rightTrigger;
-	double triggerValue;
-	//Define Pneumatics
-    private Solenoid s1,s2; 
-    private Compressor myComp;
     Timer driveTimer;
-    final String defaultAuto = "Default";
-    final String customAuto = "My Auto";
+
+    //for the driver station
+
     String autoSelected;
     SendableChooser chooser;
-    private boolean turningLeft = false;
-    private boolean turningRight = false;
     
     @Override
 	public void robotInit() {
-    	gyro = new AnalogGyro(0);
-    	driveTimer = new Timer();
-        //s1 = new Solenoid(0); //Construct Solenoid
-        //s2 = new Solenoid(1); //Construct Solenoid
-        //myComp = new Compressor(1); //Construct Compressor
-        //controller = new Joystick (0);//sets the joystick port/create joystick object for driving
-        //AButton = new JoystickButton(controller,1); //Construct "A" Button on controller
-        //BButton = new JoystickButton(controller,2); //Construct "A" Button on controller
+    	gyro = new AnalogGyro(ac_gyro);
+    	
+  //      ranger = new AnalogInput(ac_ranger);
+        driveTimer = new Timer();
         chooser = new SendableChooser();
         chooser.addDefault("Default Auto", defaultAuto);
         chooser.addObject("My Auto", customAuto);
@@ -81,43 +81,35 @@ public class Robot extends IterativeRobot {
     	autoSelected = (String) chooser.getSelected();
 //		autoSelected = SmartDashboard.getString("Auto Selector", defaultAuto);
 		System.out.println("Auto selected: " + autoSelected);
-		try {
-			gyro.reset();
-			gyro.calibrate();
-			Thread.sleep(10000);
-			
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
+		//get an absolute reference system
+		gyro.reset();
+		gyro.calibrate();
     }
     
-    
-    
-    private final static double turnSpeed = 0.1;
+
     private boolean rotateRight(int angle) {
 		// TODO Auto-generated method stub
- 	   rightBack.set(-turnSpeed);
+ 	   rightBack.set(turnSpeed);
+ 	   leftBack.set(turnSpeed);
+ 	   rightBack.set(turnSpeed);
  	   leftBack.set(turnSpeed);
  	   return gyro.getAngle()>=angle;
 	}
     private boolean rotateLeft(int angle) {
-		// TODO Auto-generated method stub
- 	   rightBack.set(turnSpeed);
- 	   leftBack.set(-turnSpeed);
+  	   rightBack.set(-turnSpeed);
+  	   leftBack.set(-turnSpeed);
+  	   rightBack.set(-turnSpeed);
+  	   leftBack.set(-turnSpeed);
  	   return gyro.getAngle()>=angle;
 	}
     
 	/**
      * This function is called periodically during autonomous
      */
-    private int step = 0;
+    private int step = 0;// this is the variable which is the current operating code in autonomous
     
     public void autonomousPeriodic() {
-    	if (step == 0){
-    		step++;
-    	}
+    	
     	switch(autoSelected) {
     	case customAuto:
         //Put custom auto code here   
@@ -126,8 +118,11 @@ public class Robot extends IterativeRobot {
     	default:
     	//Put default auto code here
     		switch(step){
+    		case 0:
+    			step ++;
+    			break;
     		case 1:
-    			drive(0.1);
+    			drive(0.3);
     			if (driveTimer.hasPeriodPassed(5000)){
     				step++;
     				driveTimer.stop();
@@ -141,8 +136,8 @@ public class Robot extends IterativeRobot {
     		
     		case 3:
     			
-    			drive(0.5);
-    			if (driveTimer.hasPeriodPassed(900)){
+    			drive(0.6);
+    			if (driveTimer.hasPeriodPassed(2500)){
     				step++;
     				driveTimer.stop();
     			}
@@ -161,73 +156,75 @@ public class Robot extends IterativeRobot {
     
    public void drive(double speed){
 	   timerMark(driveTimer);
-	   rightBack.set(speed);
+	   rightBack.set(-speed);
+	   rightFront.set(-speed);
 	   leftBack.set(speed);
+	   leftFront.set(speed);
    }
    
    @Override
 public void teleopInit () {
 	   bot.drive(0.0, 0.0); //Stop Robot
-	   turnSolenoidsOff();
-	   myComp.setClosedLoopControl(true);
+//	   turnSolenoidsOff();
+//	   myComp.setClosedLoopControl(true);
+//   }
    }
-   
     @Override
 	public void teleopPeriodic() {
-		stickX = controller.getRawAxis(0);//update X value
-		stickY = controller.getRawAxis(1);//update Y value
-		leftTrigger = controller.getRawAxis(2);//triggers for driving
-		rightTrigger = (controller.getRawAxis(3))*-1;//MAde negative so adds up
-		triggerValue = leftTrigger+rightTrigger;
-    	//bot.arcadeDrive(triggerValue, stickX);
-    	//rightBack.set(rightBack.get()*-1);
-    //	leftBack.set(leftBack.get()*-1);   
-        if (AButton.get()){//If Button pressed call toggle function
-        	extend();
-    	}
-        else if (BButton.get()) {
-        	retract();
-        }
+//		stickX = controller.getRawAxis(0);//update X value
+//		stickY = controller.getRawAxis(1);//update Y value
+//		leftTrigger = controller.getRawAxis(2);//triggers for driving
+//		rightTrigger = (controller.getRawAxis(3))*-1;//MAde negative so adds up
+//		triggerValue = leftTrigger+rightTrigger;
+//    	//bot.arcadeDrive(triggerValue, stickX);
+//    	//rightBack.set(rightBack.get()*-1);
+//    //	leftBack.set(leftBack.get()*-1);   
+//        if (AButton.get()){//If Button pressed call toggle function
+//        	extend();
+//    	}
+//        else if (BButton.get()) {
+//        	retract();
+//        }
         
         
     }
-    public void toggleLifter() {
-    	
-    	s1.set(!s1.get());
-    	s2.set(!s2.get());
-   }
-    
-    public void retract (){
-    	s2.set(true);
-    	s1.set(false);
-    }
-    public void extend (){
-    	s1.set(true);
-    	s2.set(false);
-    }
-
-   
-   public void fillTank() throws InterruptedException  {
-       myComp.start(); //Start Compressor
-      // compressorFull=false;
-       long startTime=System.currentTimeMillis();
-      while(myComp.getPressureSwitchValue() || System.currentTimeMillis()-startTime > 20000){
-   	   	Thread.sleep(1);
-      }
-      myComp.stop();
-     // compressorFull=true;
-      
-	  //Stop Compressor
-	   
-   }
-   	
-   //This function will turn bothe solenoids off
-   
-   public void turnSolenoidsOff(){
-	   System.out.println("Turning Both Solenoids Off");
-	   s1.set(false);
-	   s2.set(false);
-   }
- 
+//    public void toggleLifter() {
+////    	
+////    	s1.set(!s1.get());
+////    	s2.set(!s2.get());
+//   }
+//    
+//    public void retract (){
+//    	s2.set(true);
+//    	s1.set(false);
+//    }
+//    public void extend (){
+//    	s1.set(true);
+//    	s2.set(false);
+//    }
+//
+//   
+//   public void fillTank() throws InterruptedException  {
+//       myComp.start(); //Start Compressor
+//      // compressorFull=false;
+//       long startTime=System.currentTimeMillis();
+//      while(myComp.getPressureSwitchValue() || System.currentTimeMillis()-startTime > 20000){
+//   	   	Thread.sleep(1);
+//      }
+//      myComp.stop();
+//     // compressorFull=true;
+//      
+//	  //Stop Compressor
+//	   
+//   }
+//   	
+//   //This function will turn bothe solenoids off
+//   
+//   public void turnSolenoidsOff(){
+//	   System.out.println("Turning Both Solenoids Off");
+//	   s1.set(false);
+//	   s2.set(false);
+//   }
+// 
 
 }
